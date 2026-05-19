@@ -17,7 +17,7 @@
         </p>
         <div class="hero-actions">
             <a href="{{ url_for('register') }}" class="btn-primary">Create free account</a>
-            <a href="{{ url_for('login') }}" class="btn-ghost">See how it works</a>
+            <a href="#" id="how-it-works-link" class="btn-ghost">See how it works</a>
         </div>
     </div>
     <div class="hero-visual">
@@ -96,4 +96,45 @@
     </div>
 </section>
 
+    <div id="video-modal" class="modal-overlay">
+        <div class="modal-container">
+            <button class="modal-close" id="modal-close">&times;</button>
+            <div class="video-wrapper">
+                <iframe id="modal-video" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const modal = document.getElementById('video-modal');
+        const closeBtn = document.getElementById('modal-close');
+        const link = document.getElementById('how-it-works-link');
+        const video = document.getElementById('modal-video');
+        const videoUrl = 'https://www.youtube.com/embed/dQw4w9WgXcQ';
+
+        function openModal(e) {
+            e.preventDefault();
+            video.src = videoUrl;
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            modal.classList.remove('active');
+            video.src = '';
+            document.body.style.overflow = '';
+        }
+
+        link.addEventListener('click', openModal);
+        closeBtn.addEventListener('click', closeModal);
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+    });
+</script>
 {% endblock %}
