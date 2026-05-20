@@ -70,6 +70,14 @@ def seed_db():
         )
         conn.commit()
 
+def get_user_by_email(email):
+    """Retrieves a user from the database by their email address."""
+    with get_db() as conn:
+        return conn.execute(
+            "SELECT id, password_hash FROM users WHERE email = ?",
+            (email,)
+        ).fetchone()
+
 def create_user(name, email, password):
     """Hashes password and inserts a new user into the database."""
     password_hash = generate_password_hash(password)
