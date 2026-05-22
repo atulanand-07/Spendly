@@ -116,7 +116,30 @@ def logout():
 @app.route("/profile")
 @login_required
 def profile():
-    return "Profile page — coming in Step 4"
+    user = {
+        "name": "Atul Anand",
+        "email": "atul@example.com",
+        "member_since": "May 2026"
+    }
+    stats = {
+        "total_spent": "₹12,450.00",
+        "transaction_count": 42,
+        "top_category": "Food"
+    }
+    transactions = [
+        {"date": "2026-05-21", "description": "Grocery Shopping", "category": "Food", "amount": "₹1,200.00"},
+        {"date": "2026-05-20", "description": "Uber Ride", "category": "Transport", "amount": "₹450.00"},
+        {"date": "2026-05-19", "description": "Netflix Subscription", "category": "Entertainment", "amount": "₹499.00"},
+        {"date": "2026-05-18", "description": "Dinner with friends", "category": "Food", "amount": "₹2,100.00"},
+        {"date": "2026-05-17", "description": "Electricity Bill", "category": "Utilities", "amount": "₹3,200.00"},
+    ]
+    categories = [
+        {"name": "Food", "amount": "₹4,500.00", "percentage": 36},
+        {"name": "Utilities", "amount": "₹3,200.00", "percentage": 25},
+        {"name": "Transport", "amount": "₹2,100.00", "percentage": 17},
+        {"name": "Entertainment", "amount": "₹2,650.00", "percentage": 22},
+    ]
+    return render_template("profile.html", user=user, stats=stats, transactions=transactions, categories=categories)
 
 
 @app.route("/expenses/add")
