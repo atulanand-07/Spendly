@@ -1,8 +1,9 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
-from database.db import init_db, seed_db, create_user, get_user_by_email
+from database.db import init_db, seed_db, create_user, get_user_by_email, get_user_expenses, get_user_category_totals, get_user_profile, get_user_stats, get_top_category
 import sqlite3
 from functools import wraps
 from werkzeug.security import check_password_hash
+from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = "dev-secret-key-123"
@@ -116,28 +117,55 @@ def logout():
 @app.route("/profile")
 @login_required
 def profile():
+    user_id = session["user_id"]
+
+    # Get user profile
+    profile_data = get_user_profile(user_id)
+    member_since = "Unknown"
+    if profile_data and profile_data["created_at"]:
+        try:
+            dt = datetime.strptime(profile_data["created_at"], "%Y-%m-%d %H:%M:%S")
+            member_since = dt.strftime("%B %Y")
+        except ValueError:
+            member_since = profile_data["created_at"]
+
     user = {
-        "name": "Atul Anand",
-        "email": "atul@example.com",
-        "member_since": "May 2026"
+        "name": profile_data["name"] if profile_data else "User",
+        "email": profile_data["email"] if profile_data else "",
+        "member_since": member_since
     }
+    # Get user stats
+    stats_data = get_user_stats(user_id)
+    total_spent = stats_data["total_spent"] if stats_data and stats_data["total_spent"] is not None else 0.0
+
+    top_cat_row = get_top_category(user_id)
+    top_category = top_cat_row["category"] if top_cat_row else "None"
+
     stats = {
-        "total_spent": "₹12,450.00",
-        "transaction_count": 42,
-        "top_category": "Food"
+        "total_spent": f"₹{total_spent:,.2f}",
+        "transaction_count": stats_data["transaction_count"] if stats_data else 0,
+        "top_category": top_category
     }
     transactions = [
-        {"date": "2026-05-21", "description": "Grocery Shopping", "category": "Food", "amount": "₹1,200.00"},
-        {"date": "2026-05-20", "description": "Uber Ride", "category": "Transport", "amount": "₹450.00"},
-        {"date": "2026-05-19", "description": "Netflix Subscription", "category": "Entertainment", "amount": "₹499.00"},
-        {"date": "2026-05-18", "description": "Dinner with friends", "category": "Food", "amount": "₹2,100.00"},
-        {"date": "2026-05-17", "description": "Electricity Bill", "category": "Utilities", "amount": "₹3,200.00"},
+        {
+            "date": row["date"],
+            "description": row["description"],
+            "category": row["category"],
+            "amount": f"₹{row['amount']:,.2f}"
+        }
+        for row in get_user_expenses(session["user_id"])
     ]
+
+    category_data = get_user_category_totals(session["user_id"])
+    overall_total = sum(row["total"] for row in category_data)
+
     categories = [
-        {"name": "Food", "amount": "₹4,500.00", "percentage": 36},
-        {"name": "Utilities", "amount": "₹3,200.00", "percentage": 25},
-        {"name": "Transport", "amount": "₹2,100.00", "percentage": 17},
-        {"name": "Entertainment", "amount": "₹2,650.00", "percentage": 22},
+        {
+            "name": row["category"],
+            "amount": f"₹{row['total']:,.2f}",
+            "percentage": int((row["total"] / overall_total * 100)) if overall_total > 0 else 0
+        }
+        for row in category_data
     ]
     return render_template("profile.html", user=user, stats=stats, transactions=transactions, categories=categories)
 

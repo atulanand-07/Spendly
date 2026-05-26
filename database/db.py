@@ -89,3 +89,45 @@ def create_user(name, email, password):
         conn.commit()
         return cursor.lastrowid
 
+def get_user_expenses(user_id):
+    """Retrieves all expenses for a specific user, ordered by date descending."""
+    with get_db() as conn:
+        return conn.execute(
+            "SELECT date, description, category, amount FROM expenses WHERE user_id = ? ORDER BY date DESC",
+            (user_id,)
+        ).fetchall()
+
+
+def get_user_category_totals(user_id):
+    """Retrieves total spending per category for a specific user."""
+    with get_db() as conn:
+        return conn.execute(
+            "SELECT category, SUM(amount) as total FROM expenses WHERE user_id = ? GROUP BY category",
+            (user_id,)
+        ).fetchall()
+
+def get_user_profile(user_id):
+    """Retrieves user profile information."""
+    with get_db() as conn:
+        return conn.execute(
+            "SELECT name, email, created_at FROM users WHERE id = ?",
+            (user_id,)
+        ).fetchone()
+
+def get_user_stats(user_id):
+    """Retrieves summary statistics for a user's expenses."""
+    with get_db() as conn:
+        return conn.execute(
+            "SELECT SUM(amount) as total_spent, COUNT(id) as transaction_count FROM expenses WHERE user_id = ?",
+            (user_id,)
+        ).fetchone()
+
+def get_top_category(user_id):
+    """Retrieves the category with the highest total spend for a user."""
+    with get_db() as conn:
+        return conn.execute(
+            "SELECT category FROM expenses WHERE user_id = ? GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1",
+            (user_id,)
+        ).fetchone()
+
+
