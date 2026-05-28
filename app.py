@@ -3,7 +3,7 @@ from database.db import init_db, seed_db, create_user, get_user_by_email, get_us
 import sqlite3
 from functools import wraps
 from werkzeug.security import check_password_hash
-from datetime import datetime
+from datetime import datetime, date, timedelta
 
 app = Flask(__name__)
 app.secret_key = "dev-secret-key-123"
@@ -118,6 +118,38 @@ def logout():
 @login_required
 def profile():
     user_id = session["user_id"]
+    active_filter = request.args.get("preset", "all")
+    start_date = request.args.get("start_date")
+    end_date = request.args.get("end_date")
+
+    today = date.today()
+
+    def subtract_months(source_date, months):
+        month_index = source_date.month - months - 1
+        year = source_date.year + month_index // 12
+        month = month_index % 12 + 1
+        return source_date.replace(year=year, month=month, day=1)
+
+    if active_filter == "month":
+        start_date = today.replace(day=1).isoformat()
+        next_month = subtract_months(today.replace(day=1), -1)
+        end_date = (next_month - timedelta(days=1)).isoformat()
+    elif active_filter == "3months":
+        start_date = subtract_months(today, 2).isoformat()
+        next_month = subtract_months(today.replace(day=1), -1)
+        end_date = (next_month - timedelta(days=1)).isoformat()
+    elif active_filter == "6months":
+        start_date = subtract_months(today, 5).isoformat()
+        next_month = subtract_months(today.replace(day=1), -1)
+        end_date = (next_month - timedelta(days=1)).isoformat()
+    elif active_filter == "custom":
+        pass
+    elif start_date or end_date:
+        active_filter = "custom"
+    else:
+        active_filter = "all"
+        start_date = None
+        end_date = None
 
     # Get user profile
     profile_data = get_user_profile(user_id)
@@ -135,10 +167,10 @@ def profile():
         "member_since": member_since
     }
     # Get user stats
-    stats_data = get_user_stats(user_id)
+    stats_data = get_user_stats(user_id, start_date, end_date)
     total_spent = stats_data["total_spent"] if stats_data and stats_data["total_spent"] is not None else 0.0
 
-    top_cat_row = get_top_category(user_id)
+    top_cat_row = get_top_category(user_id, start_date, end_date)
     top_category = top_cat_row["category"] if top_cat_row else "None"
 
     stats = {
@@ -153,10 +185,10 @@ def profile():
             "category": row["category"],
             "amount": f"₹{row['amount']:,.2f}"
         }
-        for row in get_user_expenses(session["user_id"])
+        for row in get_user_expenses(user_id, start_date, end_date)
     ]
 
-    category_data = get_user_category_totals(session["user_id"])
+    category_data = get_user_category_totals(user_id, start_date, end_date)
     overall_total = sum(row["total"] for row in category_data)
 
     categories = [
@@ -167,7 +199,7 @@ def profile():
         }
         for row in category_data
     ]
-    return render_template("profile.html", user=user, stats=stats, transactions=transactions, categories=categories)
+    return render_template("profile.html", user=user, stats=stats, transactions=transactions, categories=categories, start_date=start_date, end_date=end_date, active_filter=active_filter)
 
 
 @app.route("/expenses/add")

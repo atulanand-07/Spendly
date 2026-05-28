@@ -20,6 +20,22 @@
         </div>
     </header>
 
+    <div class="filter-container">
+        <form method="GET" action="{{ url_for('profile') }}" class="filter-form">
+            <button type="submit" name="preset" value="all" class="filter-pill {% if active_filter == 'all' %}is-active{% endif %}">All Time</button>
+            <button type="submit" name="preset" value="month" class="filter-pill {% if active_filter == 'month' %}is-active{% endif %}">This Month</button>
+            <button type="submit" name="preset" value="3months" class="filter-pill {% if active_filter == '3months' %}is-active{% endif %}">Last 3 Months</button>
+            <button type="submit" name="preset" value="6months" class="filter-pill {% if active_filter == '6months' %}is-active{% endif %}">Last 6 Months</button>
+            <span class="filter-divider" aria-hidden="true"></span>
+            <div class="date-range-fields">
+                <input type="date" id="start_date" name="start_date" aria-label="Start date" value="{{ start_date if start_date else '' }}">
+                <span class="date-range-separator">to</span>
+                <input type="date" id="end_date" name="end_date" aria-label="End date" value="{{ end_date if end_date else '' }}">
+            </div>
+            <button type="submit" name="preset" value="custom" class="filter-apply">Apply</button>
+        </form>
+    </div>
+
     <section class="stats-grid">
         <div class="stat-card">
             <div class="stat-header">

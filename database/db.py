@@ -1,12 +1,20 @@
 import sqlite3
 import os
+from flask import current_app
 from werkzeug.security import generate_password_hash
 
-DB_PATH = "spendly.db"
+class ClosingConnection(sqlite3.Connection):
+    """SQLite connection that closes itself after context-manager use."""
+    def __exit__(self, exc_type, exc_value, traceback):
+        result = super().__exit__(exc_type, exc_value, traceback)
+        self.close()
+        return result
 
 def get_db():
     """Returns a SQLite connection with row_factory and foreign keys enabled."""
-    conn = sqlite3.connect(DB_PATH)
+    # Use the database path from the app config, defaulting to spendly.db
+    db_path = current_app.config.get('DATABASE', 'spendly.db')
+    conn = sqlite3.connect(db_path, factory=ClosingConnection)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
@@ -89,22 +97,34 @@ def create_user(name, email, password):
         conn.commit()
         return cursor.lastrowid
 
-def get_user_expenses(user_id):
-    """Retrieves all expenses for a specific user, ordered by date descending."""
+def get_user_expenses(user_id, start_date=None, end_date=None):
+    """Retrieves expenses for a specific user, optionally filtered by date, ordered by date descending."""
     with get_db() as conn:
-        return conn.execute(
-            "SELECT date, description, category, amount FROM expenses WHERE user_id = ? ORDER BY date DESC",
-            (user_id,)
-        ).fetchall()
+        query = "SELECT date, description, category, amount FROM expenses WHERE user_id = ?"
+        params = [user_id]
+        if start_date:
+            query += " AND date >= ?"
+            params.append(start_date)
+        if end_date:
+            query += " AND date <= ?"
+            params.append(end_date)
+        query += " ORDER BY date DESC"
+        return conn.execute(query, params).fetchall()
 
 
-def get_user_category_totals(user_id):
-    """Retrieves total spending per category for a specific user."""
+def get_user_category_totals(user_id, start_date=None, end_date=None):
+    """Retrieves total spending per category for a specific user, optionally filtered by date."""
     with get_db() as conn:
-        return conn.execute(
-            "SELECT category, SUM(amount) as total FROM expenses WHERE user_id = ? GROUP BY category",
-            (user_id,)
-        ).fetchall()
+        query = "SELECT category, SUM(amount) as total FROM expenses WHERE user_id = ?"
+        params = [user_id]
+        if start_date:
+            query += " AND date >= ?"
+            params.append(start_date)
+        if end_date:
+            query += " AND date <= ?"
+            params.append(end_date)
+        query += " GROUP BY category"
+        return conn.execute(query, params).fetchall()
 
 def get_user_profile(user_id):
     """Retrieves user profile information."""
@@ -114,20 +134,32 @@ def get_user_profile(user_id):
             (user_id,)
         ).fetchone()
 
-def get_user_stats(user_id):
-    """Retrieves summary statistics for a user's expenses."""
+def get_user_stats(user_id, start_date=None, end_date=None):
+    """Retrieves summary statistics for a user's expenses, optionally filtered by date."""
     with get_db() as conn:
-        return conn.execute(
-            "SELECT SUM(amount) as total_spent, COUNT(id) as transaction_count FROM expenses WHERE user_id = ?",
-            (user_id,)
-        ).fetchone()
+        query = "SELECT SUM(amount) as total_spent, COUNT(id) as transaction_count FROM expenses WHERE user_id = ?"
+        params = [user_id]
+        if start_date:
+            query += " AND date >= ?"
+            params.append(start_date)
+        if end_date:
+            query += " AND date <= ?"
+            params.append(end_date)
+        return conn.execute(query, params).fetchone()
 
-def get_top_category(user_id):
-    """Retrieves the category with the highest total spend for a user."""
+def get_top_category(user_id, start_date=None, end_date=None):
+    """Retrieves the category with the highest total spend for a user, optionally filtered by date."""
     with get_db() as conn:
-        return conn.execute(
-            "SELECT category FROM expenses WHERE user_id = ? GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1",
-            (user_id,)
-        ).fetchone()
+        base_query = "SELECT category FROM expenses WHERE user_id = ?"
+        params = [user_id]
+        if start_date:
+            base_query += " AND date >= ?"
+            params.append(start_date)
+        if end_date:
+            base_query += " AND date <= ?"
+            params.append(end_date)
+        base_query += " GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1"
+
+        return conn.execute(base_query, params).fetchone()
 
 
